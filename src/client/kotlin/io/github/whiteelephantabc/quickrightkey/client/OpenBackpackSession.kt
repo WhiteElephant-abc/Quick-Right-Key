@@ -4,6 +4,8 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.inventory.ContainerScreen
 import net.minecraft.client.gui.screens.inventory.ShulkerBoxScreen
+import net.minecraft.core.component.DataComponents
+import net.minecraft.network.chat.Component
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.Item
@@ -20,6 +22,7 @@ class OpenBackpackSession {
 
 	private data class Session(
 		val type: BoxType,
+		val expectedTitle: String,
 		val targetItem: Item,
 		val originalSelected: Int,
 		val hotbarSlot: Int,
@@ -52,20 +55,21 @@ class OpenBackpackSession {
 		if (targetStack.isEmpty || player.cooldowns.isOnCooldown(targetStack)) return
 
 		val originalSelected = player.inventory.selectedSlot
+		val expectedTitle = resolveExpectedTitle(target.type, targetStack)
 
 		when (val location = target.location) {
 			Location.MainHand -> {
-				session = Session(target.type, targetStack.item, originalSelected, -1, -1, ItemStack.EMPTY, Phase.WAITING_OPEN)
+				session = Session(target.type, expectedTitle, targetStack.item, originalSelected, -1, -1, ItemStack.EMPTY, Phase.WAITING_OPEN)
 				useItem(client, player, InteractionHand.MAIN_HAND)
 			}
 
 			Location.OffHand -> {
-				session = Session(target.type, targetStack.item, originalSelected, -1, -1, ItemStack.EMPTY, Phase.WAITING_OPEN)
+				session = Session(target.type, expectedTitle, targetStack.item, originalSelected, -1, -1, ItemStack.EMPTY, Phase.WAITING_OPEN)
 				useItem(client, player, InteractionHand.OFF_HAND)
 			}
 
 			is Location.Hotbar -> {
-				session = Session(target.type, targetStack.item, originalSelected, -1, -1, ItemStack.EMPTY, Phase.WAITING_OPEN)
+				session = Session(target.type, expectedTitle, targetStack.item, originalSelected, -1, -1, ItemStack.EMPTY, Phase.WAITING_OPEN)
 				InventoryMover.switchSelected(client, player, location.slot)
 				useItem(client, player, InteractionHand.MAIN_HAND)
 			}
@@ -75,6 +79,7 @@ class OpenBackpackSession {
 				if (!InventoryMover.moveToHotbar(client, player, location.slot, InventoryMover.HOTBAR_TARGET_SLOT)) return
 				session = Session(
 					target.type,
+					expectedTitle,
 					targetStack.item,
 					originalSelected,
 					InventoryMover.HOTBAR_TARGET_SLOT,
@@ -92,7 +97,7 @@ class OpenBackpackSession {
 		val active = session ?: return
 		active.ticks++
 		when (active.phase) {
-			Phase.WAITING_OPEN -> if (isTargetScreen(client.gui.screen(), active.type)) {
+			Phase.WAITING_OPEN -> if (isTargetScreen(client.gui.screen(), active.type, active.expectedTitle)) {
 				active.phase = Phase.WAITING_CLOSE
 				active.ticks = 0
 			} else if (active.ticks > OPEN_TIMEOUT_TICKS) {
@@ -100,7 +105,7 @@ class OpenBackpackSession {
 				active.ticks = 0
 			}
 
-			Phase.WAITING_CLOSE -> if (!isTargetScreen(client.gui.screen(), active.type)) {
+			Phase.WAITING_CLOSE -> if (!isTargetScreen(client.gui.screen(), active.type, active.expectedTitle)) {
 				active.phase = Phase.WAITING_RESTORE
 				active.ticks = 0
 			}
@@ -123,9 +128,15 @@ class OpenBackpackSession {
 		client.gameMode?.useItem(player, hand)
 	}
 
-	private fun isTargetScreen(screen: Screen?, type: BoxType): Boolean = when (type) {
-		BoxType.ENDER_CHEST -> screen is ContainerScreen
-		BoxType.SHULKER -> screen is ShulkerBoxScreen
+	private fun resolveExpectedTitle(type: BoxType, stack: ItemStack): String = when (type) {
+		BoxType.ENDER_CHEST -> Component.translatable("container.enderchest").string
+		BoxType.SHULKER -> stack.get(DataComponents.CUSTOM_NAME)?.plainCopy()?.string
+			?: Component.translatable("container.shulkerBox").string
+	}
+
+	private fun isTargetScreen(screen: Screen?, type: BoxType, expectedTitle: String): Boolean = when (type) {
+		BoxType.ENDER_CHEST -> screen is ContainerScreen && screen.title.string == expectedTitle
+		BoxType.SHULKER -> screen is ShulkerBoxScreen && screen.title.string == expectedTitle
 	}
 
 	private companion object {
