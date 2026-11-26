@@ -3,24 +3,19 @@
 	"id": "quickrightkey",
 	"version": "${version}",
 	"name": "Quick-Right-Key",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"description": "Press a key to have a server running Quick-Right-Click open a shulker box or ender chest for you.",
 	"authors": [
-		"Me!"
+		"WhiteElephant-abc"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"homepage": "https://github.com/WhiteElephant-abc/Quick-Right-Key",
+		"sources": "https://github.com/WhiteElephant-abc/Quick-Right-Key",
+		"issues": "https://github.com/WhiteElephant-abc/Quick-Right-Key/issues"
 	},
-	"license": "CC0-1.0",
+	"license": "GPL-3.0-or-later",
 	"icon": "assets/quickrightkey/icon.png",
-	"environment": "*",
+	"environment": "client",
 	"entrypoints": {
-		"main": [
-			{
-				"value": "io.github.whiteelephantabc.quickrightkey.QuickRightKey",
-				"adapter": "kotlin"
-			}
-		],
 		"client": [
 			{
 				"value": "io.github.whiteelephantabc.quickrightkey.client.QuickRightKeyClient",
@@ -28,13 +23,6 @@
 			}
 		]
 	},
-	"mixins": [
-		"quickrightkey.mixins.json",
-		{
-			"config": "quickrightkey.client.mixins.json",
-			"environment": "client"
-		}
-	],
 	"depends": {
 		"fabricloader": ">=0.20.1",
 		"minecraft": "~26.3",
