@@ -8,7 +8,6 @@ import net.minecraft.core.component.DataComponents
 import net.minecraft.network.chat.Component
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.entity.player.Player
-import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 
 class OpenBackpackSession {
@@ -23,11 +22,9 @@ class OpenBackpackSession {
 	private data class Session(
 		val type: BoxType,
 		val expectedTitle: String,
-		val targetItem: Item,
 		val originalSelected: Int,
 		val hotbarSlot: Int,
 		val backpackSlot: Int,
-		val swapStack: ItemStack,
 		var phase: Phase,
 		var ticks: Int = 0
 	)
@@ -59,32 +56,29 @@ class OpenBackpackSession {
 
 		when (val location = target.location) {
 			Location.MainHand -> {
-				session = Session(target.type, expectedTitle, targetStack.item, originalSelected, -1, -1, ItemStack.EMPTY, Phase.WAITING_OPEN)
+				session = Session(target.type, expectedTitle, originalSelected, -1, -1, Phase.WAITING_OPEN)
 				useItem(client, player, InteractionHand.MAIN_HAND)
 			}
 
 			Location.OffHand -> {
-				session = Session(target.type, expectedTitle, targetStack.item, originalSelected, -1, -1, ItemStack.EMPTY, Phase.WAITING_OPEN)
+				session = Session(target.type, expectedTitle, originalSelected, -1, -1, Phase.WAITING_OPEN)
 				useItem(client, player, InteractionHand.OFF_HAND)
 			}
 
 			is Location.Hotbar -> {
-				session = Session(target.type, expectedTitle, targetStack.item, originalSelected, -1, -1, ItemStack.EMPTY, Phase.WAITING_OPEN)
+				session = Session(target.type, expectedTitle, originalSelected, -1, -1, Phase.WAITING_OPEN)
 				InventoryMover.switchSelected(client, player, location.slot)
 				useItem(client, player, InteractionHand.MAIN_HAND)
 			}
 
 			is Location.Backpack -> {
-				val swapStack = player.inventory.getItem(InventoryMover.HOTBAR_TARGET_SLOT).copy()
-				if (!InventoryMover.moveToHotbar(client, player, location.slot, InventoryMover.HOTBAR_TARGET_SLOT)) return
+				InventoryMover.moveToHotbar(client, player, location.slot, InventoryMover.HOTBAR_TARGET_SLOT)
 				session = Session(
 					target.type,
 					expectedTitle,
-					targetStack.item,
 					originalSelected,
 					InventoryMover.HOTBAR_TARGET_SLOT,
 					location.slot,
-					swapStack,
 					Phase.WAITING_OPEN
 				)
 				InventoryMover.switchSelected(client, player, InventoryMover.HOTBAR_TARGET_SLOT)
@@ -118,7 +112,7 @@ class OpenBackpackSession {
 		val player = client.player ?: return true
 		if (client.gui.screen() != null || player.containerMenu !== player.inventoryMenu) return false
 		if (active.backpackSlot >= 0 && active.hotbarSlot in 0 until HOTBAR_COUNT) {
-			InventoryMover.restoreItem(client, player, active.backpackSlot, active.hotbarSlot, active.targetItem, active.swapStack)
+			InventoryMover.restoreItem(client, player, active.backpackSlot, active.hotbarSlot)
 		}
 		InventoryMover.switchSelected(client, player, active.originalSelected)
 		return true
